@@ -139,7 +139,12 @@ const CheckoutPage = () => {
       .single();
 
     if (error) {
-      console.error(error);
+      console.error('Order creation error details:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      });
       toast.error('Failed to create order');
       return null;
     }
