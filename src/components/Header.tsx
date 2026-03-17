@@ -97,11 +97,11 @@ const Header = () => {
                         Profile
                       </Link>
                       <Link
-                        to="/orders"
+                        to="/my-orders"
                         className="block px-4 py-2 text-sm text-gray-700 hover:bg-green-50"
                         onClick={() => setIsUserMenuOpen(false)}
                       >
-                        Orders
+                        My Orders
                       </Link>
                       <button
                         onClick={handleSignOut}

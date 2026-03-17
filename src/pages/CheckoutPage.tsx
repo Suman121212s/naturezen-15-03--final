@@ -149,6 +149,26 @@ const CheckoutPage = () => {
       return null;
     }
 
+    // Insert order items into order_items table
+    if (data) {
+      const orderItemsData = cart.map(item => ({
+        order_id: data.id,
+        product_id: item.product.id,
+        product_name: item.product.name,
+        quantity: item.quantity,
+        price: item.product.price,
+        total_price: item.product.price * item.quantity
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItemsData);
+
+      if (itemsError) {
+        console.error('Error inserting order items:', itemsError);
+        // Don't fail the order creation for this
+      }
+    }
     return data;
   };
 

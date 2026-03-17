@@ -3,11 +3,16 @@ import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CircleCheck as CheckCircle, Package, Truck, Calendar, Download, ArrowRight } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import OrderTimeline from '../components/order/OrderTimeline';
+import OrderItems from '../components/order/OrderItems';
+import { generateInvoicePDF } from '../lib/invoiceGenerator';
 import toast from 'react-hot-toast';
 
 const OrderSuccessPage = () => {
   const { orderId } = useParams();
   const [order, setOrder] = useState<any>(null);
+  const [orderItems, setOrderItems] = useState<any[]>([]);
+  const [deliveryTracking, setDeliveryTracking] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -20,12 +25,18 @@ const OrderSuccessPage = () => {
     try {
       const { data, error } = await supabase
         .from('orders')
-        .select('*, order_items(*)')
+        .select(`
+          *,
+          order_items(*),
+          delivery_tracking(*)
+        `)
         .eq('id', orderId)
         .single();
 
       if (error) throw error;
       setOrder(data);
+      setOrderItems(data.order_items || []);
+      setDeliveryTracking(data.delivery_tracking || []);
     } catch (error) {
       console.error('Error fetching order:', error);
       toast.error('Failed to load order details');
@@ -34,6 +45,21 @@ const OrderSuccessPage = () => {
     }
   };
 
+  const formatOrderId = (orderId: string) => {
+    const lastPart = orderId.split('-').pop() || '';
+    return `RKIN-${lastPart}`;
+  };
+
+  const getCurrentDeliveryStatus = () => {
+    if (!deliveryTracking || deliveryTracking.length === 0) return 1;
+    return Math.max(...deliveryTracking.map(dt => dt.status));
+  };
+
+  const handleDownloadInvoice = () => {
+    if (order) {
+      generateInvoicePDF(order);
+    }
+  };
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'PAID':
@@ -112,7 +138,7 @@ const OrderSuccessPage = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Order ID</p>
-                  <p className="font-mono font-semibold text-gray-900">{order.id}</p>
+                  <p className="font-mono font-semibold text-gray-900">{formatOrderId(order.id)}</p>
                 </div>
                 <div className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
                   {getStatusText(order.status)}
@@ -130,34 +156,7 @@ const OrderSuccessPage = () => {
           className="grid grid-cols-1 lg:grid-cols-2 gap-8"
         >
           {/* Order Items */}
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <div className="flex items-center mb-6">
-              <Package className="h-6 w-6 text-green-600 mr-3" />
-              <h2 className="text-xl font-bold text-gray-900">Order Items</h2>
-            </div>
-
-            <div className="space-y-4">
-              {order.order_items.map((item: any, index: number) => (
-                <div key={index} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
-                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                    <Package className="h-6 w-6 text-green-600" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900">{item.product_name}</h3>
-                    <p className="text-gray-600 text-sm">Quantity: {item.quantity}</p>
-                  </div>
-                  <p className="font-semibold text-gray-900">₹{(item.price * item.quantity).toFixed(2)}</p>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-6 pt-4 border-t border-gray-200">
-              <div className="flex justify-between text-lg font-bold">
-                <span>Total Amount</span>
-                <span>₹{order.total_amount.toFixed(2)}</span>
-              </div>
-            </div>
-          </div>
+          <OrderItems items={orderItems} totalAmount={order.total_amount} />
 
           {/* Shipping & Payment Info */}
           <div className="space-y-6">
@@ -182,64 +181,10 @@ const OrderSuccessPage = () => {
             </div>
 
             {/* Order Timeline */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <div className="flex items-center mb-4">
-                <Calendar className="h-6 w-6 text-green-600 mr-3" />
-                <h2 className="text-xl font-bold text-gray-900">Order Timeline</h2>
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center">
-                  <div className="w-3 h-3 bg-green-500 rounded-full mr-4"></div>
-                  <div>
-                    <p className="font-semibold text-gray-900">Order Placed</p>
-                    <p className="text-gray-600 text-sm">
-                      {new Date(order.created_at).toLocaleDateString('en-IN', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </p>
-                  </div>
-                </div>
-
-                {order.status === 'PAID' && (
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 bg-green-500 rounded-full mr-4"></div>
-                    <div>
-                      <p className="font-semibold text-gray-900">Payment Confirmed</p>
-                      <p className="text-gray-600 text-sm">Payment processed successfully</p>
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex items-center">
-                  <div className="w-3 h-3 bg-gray-300 rounded-full mr-4"></div>
-                  <div>
-                    <p className="font-semibold text-gray-600">Processing</p>
-                    <p className="text-gray-500 text-sm">We're preparing your order</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center">
-                  <div className="w-3 h-3 bg-gray-300 rounded-full mr-4"></div>
-                  <div>
-                    <p className="font-semibold text-gray-600">Shipped</p>
-                    <p className="text-gray-500 text-sm">Your order is on the way</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center">
-                  <div className="w-3 h-3 bg-gray-300 rounded-full mr-4"></div>
-                  <div>
-                    <p className="font-semibold text-gray-600">Delivered</p>
-                    <p className="text-gray-500 text-sm">Estimated delivery in 3-5 days</p>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <OrderTimeline 
+              deliveryStatus={deliveryTracking} 
+              currentStatus={getCurrentDeliveryStatus()} 
+            />
           </div>
         </motion.div>
 
@@ -253,11 +198,11 @@ const OrderSuccessPage = () => {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <button className="flex items-center justify-center bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors">
               <Download className="mr-2 h-5 w-5" />
-              Download Invoice
+              <span onClick={handleDownloadInvoice}>Download Invoice</span>
             </button>
             
             <Link
-              to="/orders"
+              to="/my-orders"
               className="flex items-center justify-center border-2 border-green-600 text-green-600 px-6 py-3 rounded-lg font-semibold hover:bg-green-600 hover:text-white transition-colors"
             >
               View All Orders
