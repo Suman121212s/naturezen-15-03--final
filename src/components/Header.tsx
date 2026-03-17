@@ -97,6 +97,13 @@ const Header = () => {
                         Profile
                       </Link>
                       <Link
+                        to="/dashboard"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-green-50"
+                        onClick={() => setIsUserMenuOpen(false)}
+                      >
+                        Dashboard
+                      </Link>
+                      <Link
                         to="/my-orders"
                         className="block px-4 py-2 text-sm text-gray-700 hover:bg-green-50"
                         onClick={() => setIsUserMenuOpen(false)}

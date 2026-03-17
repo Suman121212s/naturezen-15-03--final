@@ -172,6 +172,25 @@ const CheckoutPage = () => {
     return data;
   };
 
+  const insertOrderItems = async (orderId: string) => {
+    const orderItemsData = cart.map(item => ({
+      order_id: orderId,
+      product_id: item.product.id,
+      product_name: item.product.name,
+      quantity: item.quantity,
+      price: item.product.price,
+      total_price: item.product.price * item.quantity
+    }));
+
+    const { error } = await supabase
+      .from('order_items')
+      .insert(orderItemsData);
+
+    if (error) {
+      console.error('Error inserting order items:', error);
+    }
+  };
+
   const handleRazorpayPayment = async () => {
     if (!validateForm()) {
       return;
@@ -187,6 +206,9 @@ const CheckoutPage = () => {
         setLoading(false);
         return;
       }
+
+      // Insert order items
+      await insertOrderItems(order.id);
 
       console.log('Creating Razorpay order for amount:', order.total_amount);
       
@@ -284,6 +306,9 @@ const CheckoutPage = () => {
         setLoading(false);
         return;
       }
+
+      // Insert order items
+      await insertOrderItems(order.id);
 
       // Log COD order
       await supabase
