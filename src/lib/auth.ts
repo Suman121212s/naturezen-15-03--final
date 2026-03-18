@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { useAuth } from '../hooks/useAuth';
 
 // Create user profile after signup
 const createUserProfile = async (userId: string, email: string, fullName: string) => {
@@ -61,3 +62,6 @@ export const getCurrentUser = async () => {
   const { data: { user }, error } = await supabase.auth.getUser();
   return { user, error };
 };
+
+// Export the hook
+export { useAuth };
