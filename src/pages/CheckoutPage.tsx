@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CreditCard, Truck, MapPin, Phone, Mail, User, Lock } from 'lucide-react';
+import { CreditCard, Truck, MapPin, Phone, Mail, User, Lock, Plus, Check } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { getCurrentUser } from '../lib/auth';
 import { supabase } from '../lib/supabase';
@@ -15,12 +15,17 @@ const CheckoutPage = () => {
   const [loading, setLoading] = useState(false);
   const [formLoading, setFormLoading] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState('razorpay');
+  const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string>('');
+  const [showManualForm, setShowManualForm] = useState(false);
   
   const [shippingDetails, setShippingDetails] = useState({
     fullName: '',
     email: '',
     phone: '',
     address: '',
+    address_line_2: '',
+    area: '',
     city: '',
     state: '',
     pincode: '',
@@ -40,24 +45,74 @@ const CheckoutPage = () => {
   const checkUser = async () => {
     setFormLoading(true);
     try {
-    const { user } = await getCurrentUser();
-    if (!user) {
-      toast.error('Please login to continue');
-      navigate('/login');
-      return;
-    }
-    setUser(user);
-    setShippingDetails(prev => ({
-      ...prev,
-      email: user.email || '',
-      fullName: user.user_metadata?.full_name || '',
-    }));
+      const { user } = await getCurrentUser();
+      if (!user) {
+        toast.error('Please login to continue');
+        navigate('/login');
+        return;
+      }
+      setUser(user);
+      
+      // Load user profile data
+      const { data: userData } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      // Load saved addresses
+      const { data: addresses } = await supabase
+        .from('user_addresses')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('is_default', { ascending: false });
+
+      setSavedAddresses(addresses || []);
+      
+      // Pre-fill form with user data
+      setShippingDetails(prev => ({
+        ...prev,
+        email: user.email || '',
+        fullName: userData?.full_name || '',
+        phone: userData?.phone || '',
+      }));
+
+      // Auto-select default address if available
+      const defaultAddress = addresses?.find(addr => addr.is_default);
+      if (defaultAddress) {
+        setSelectedAddressId(defaultAddress.id);
+        fillAddressFromSaved(defaultAddress);
+      } else if (addresses && addresses.length > 0) {
+        // If no default, show address selection
+        setShowManualForm(false);
+      } else {
+        // No saved addresses, show manual form
+        setShowManualForm(true);
+      }
     } catch (error) {
       console.error('Error checking user:', error);
       toast.error('Failed to load user information');
     } finally {
       setFormLoading(false);
     }
+  };
+
+  const fillAddressFromSaved = (address: any) => {
+    setShippingDetails(prev => ({
+      ...prev,
+      address: address.address_line_1,
+      address_line_2: address.address_line_2 || '',
+      area: address.area,
+      city: address.city,
+      state: address.state_province,
+      pincode: address.postal_code,
+    }));
+  };
+
+  const handleAddressSelect = (address: any) => {
+    setSelectedAddressId(address.id);
+    fillAddressFromSaved(address);
+    setShowManualForm(false);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -68,7 +123,7 @@ const CheckoutPage = () => {
   };
 
   const validateForm = () => {
-    const required = ['fullName', 'email', 'phone', 'address', 'city', 'state', 'pincode'];
+    const required = ['fullName', 'email', 'phone', 'address', 'area', 'city', 'state', 'pincode'];
     for (const field of required) {
       if (!shippingDetails[field as keyof typeof shippingDetails]) {
         toast.error(`Please fill in ${field.replace(/([A-Z])/g, ' $1').toLowerCase()}`);
@@ -129,7 +184,10 @@ const CheckoutPage = () => {
         total_price: item.product.price * item.quantity
       })),
 
-      shipping_address: shippingDetails
+      shipping_address: {
+        ...shippingDetails,
+        selected_address_id: selectedAddressId || null
+      }
     };
 
     const { data, error } = await supabase
@@ -406,6 +464,7 @@ const CheckoutPage = () => {
                   <h2 className="text-xl font-bold text-gray-900">Shipping Information</h2>
                 </div>
 
+                {/* Personal Information */}
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -464,23 +523,122 @@ const CheckoutPage = () => {
                     </div>
                   </div>
 
+                  {/* Saved Addresses */}
+                  {savedAddresses.length > 0 && (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-semibold text-gray-800">Saved Addresses</h3>
+                        <button
+                          type="button"
+                          onClick={() => setShowManualForm(!showManualForm)}
+                          className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center"
+                        >
+                          <Plus className="mr-1 h-4 w-4" />
+                          {showManualForm ? 'Use Saved Address' : 'Add New Address'}
+                        </button>
+                      </div>
+
+                      {!showManualForm && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {savedAddresses.map((address) => (
+                            <div
+                              key={address.id}
+                              onClick={() => handleAddressSelect(address)}
+                              className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                                selectedAddressId === address.id
+                                  ? 'border-green-500 bg-green-50'
+                                  : 'border-gray-200 hover:border-green-300'
+                              }`}
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center space-x-2 mb-2">
+                                    <span className="font-semibold text-gray-900">
+                                      {address.address_type?.charAt(0).toUpperCase() + address.address_type?.slice(1) || 'Address'}
+                                    </span>
+                                    {address.is_default && (
+                                      <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                                        Default
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-sm text-gray-600">
+                                    {address.address_line_1}
+                                    {address.address_line_2 && `, ${address.address_line_2}`}
+                                  </p>
+                                  <p className="text-sm text-gray-600">
+                                    {address.area}, {address.city}
+                                  </p>
+                                  <p className="text-sm text-gray-600">
+                                    {address.state_province} - {address.postal_code}
+                                  </p>
+                                </div>
+                                {selectedAddressId === address.id && (
+                                  <Check className="h-5 w-5 text-green-600 flex-shrink-0" />
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Manual Address Form */}
+                  {(showManualForm || savedAddresses.length === 0) && (
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-800">
+                        {savedAddresses.length > 0 ? 'New Address' : 'Shipping Address'}
+                      </h3>
+
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Address
-                    </label>
-                    <input
-                      type="text"
-                      name="address"
-                      value={shippingDetails.address}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                      placeholder="Street address, apartment, suite, etc."
-                      required
-                      disabled={loading}
-                    />
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Address Line 1
+                        </label>
+                        <input
+                          type="text"
+                          name="address"
+                          value={shippingDetails.address}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                          placeholder="House/Flat number, Building name, Street"
+                          required
+                          disabled={loading}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Address Line 2 (Optional)
+                        </label>
+                        <input
+                          type="text"
+                          name="address_line_2"
+                          value={shippingDetails.address_line_2}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                          placeholder="Apartment, suite, unit, etc."
+                          disabled={loading}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Area/Locality
+                        </label>
+                        <input
+                          type="text"
+                          name="area"
+                          value={shippingDetails.area}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                          placeholder="Area, locality, or neighborhood"
+                          required
+                          disabled={loading}
+                        />
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         City
@@ -528,6 +686,8 @@ const CheckoutPage = () => {
                       />
                     </div>
                   </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
