@@ -16,13 +16,11 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ user, userProfile, onPr
     full_name: userProfile?.full_name || '',
     phone: userProfile?.phone || '',
     date_of_birth: userProfile?.date_of_birth || '',
-    date_of_birth: '',
-    gender: '',
-    bio: '',
     gender: userProfile?.gender || '',
+    bio: userProfile?.bio || '',
   });
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
@@ -35,13 +33,14 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ user, userProfile, onPr
 
     try {
       const updateData = {
-        ...formData,
+        full_name: formData.full_name || null,
+        phone: formData.phone || null,
+        date_of_birth: formData.date_of_birth || null,
+        gender: formData.gender || null,
+        bio: formData.bio || null,
         email: user.email,
         updated_at: new Date().toISOString(),
       };
-          date_of_birth: formData.date_of_birth || null,
-          gender: formData.gender || null,
-          bio: formData.bio || null,
 
       let result;
       if (userProfile) {
@@ -69,9 +68,6 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ user, userProfile, onPr
       console.error('Error updating profile:', error);
       toast.error('Failed to update profile');
     } finally {
-        date_of_birth: user.date_of_birth || '',
-        gender: user.gender || '',
-        bio: user.bio || '',
       setLoading(false);
     }
   };
@@ -99,6 +95,7 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ user, userProfile, onPr
                 onChange={handleInputChange}
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                 placeholder="Enter your full name"
+                disabled={loading}
               />
             </div>
           </div>
@@ -133,6 +130,7 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ user, userProfile, onPr
                 onChange={handleInputChange}
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                 placeholder="Enter your phone number"
+                disabled={loading}
               />
             </div>
           </div>
@@ -150,87 +148,52 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ user, userProfile, onPr
                 value={formData.date_of_birth}
                 onChange={handleInputChange}
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                disabled={loading}
               />
             </div>
           </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Date of Birth
-                  </label>
-                  <div className="relative">
-                    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    <input
-                      type="date"
-                      name="date_of_birth"
-                      value={formData.date_of_birth}
-                      onChange={handleInputChange}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      disabled={loading}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Gender
-                  </label>
-                  <div className="relative">
-                    <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    <select
-                      name="gender"
-                      value={formData.gender}
-                      onChange={handleInputChange}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none"
-                      disabled={loading}
-                    >
-                      <option value="">Select Gender</option>
-                      <option value="male">Male</option>
-                      <option value="female">Female</option>
-                      <option value="other">Other</option>
-                      <option value="prefer_not_to_say">Prefer not to say</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Bio
-                </label>
-                <textarea
-                  name="bio"
-                  value={formData.bio}
-                  onChange={handleInputChange}
-                  rows={4}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                  placeholder="Tell us a little about yourself..."
-                  disabled={loading}
-                  maxLength={500}
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  {formData.bio.length}/500 characters
-                </p>
-              </div>
-
 
           {/* Gender */}
-          <div className="md:col-span-2">
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Gender
             </label>
-            <select
-              name="gender"
-              value={formData.gender}
+            <div className="relative">
+              <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <select
+                name="gender"
+                value={formData.gender}
+                onChange={handleInputChange}
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent appearance-none"
+                disabled={loading}
+              >
+                <option value="">Select Gender</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+                <option value="prefer_not_to_say">Prefer not to say</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Bio */}
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Bio
+            </label>
+            <textarea
+              name="bio"
+              value={formData.bio}
               onChange={handleInputChange}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-            >
-              <option value="">Select Gender</option>
-              <option value="male">Male</option>
-              <option value="female">Female</option>
-              <option value="other">Other</option>
-              <option value="prefer_not_to_say">Prefer not to say</option>
-            </select>
+              rows={4}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+              placeholder="Tell us a little about yourself..."
+              disabled={loading}
+              maxLength={500}
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              {formData.bio.length}/500 characters
+            </p>
           </div>
         </div>
 
