@@ -12,6 +12,11 @@ import CheckoutPage from './pages/CheckoutPage';
 import OrderSuccessPage from './pages/OrderSuccessPage';
 import MyOrdersPage from './pages/MyOrdersPage';
 import DashboardPage from './pages/DashboardPage';
+import ContactPage from './pages/ContactPage';
+import ShippingInfoPage from './pages/ShippingInfoPage';
+import ReturnsPage from './pages/ReturnsPage';
+import FAQPage from './pages/FAQPage';
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import { CartProvider } from './context/CartContext';
 
 function App() {
@@ -60,6 +65,11 @@ function App() {
                 </>
               }
             />
+            <Route path="/contact" element={<ContactPage />} />
+            <Route path="/shipping-info" element={<ShippingInfoPage />} />
+            <Route path="/returns" element={<ReturnsPage />} />
+            <Route path="/faq" element={<FAQPage />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
           </Routes>
 
         </div>
